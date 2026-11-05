@@ -1,0 +1,30 @@
+# The actual validated 3-mammal case from sandbox/optimizer's work (mammals 3, 12, 8 -- spread by
+# route position, the most cross-checked case in this repo's own test suite). Full settings
+# (pop_size=32/n_gen=200/5 seeds) -- takes a few minutes, not seconds. See
+# config/default_config.yaml for what every field means.
+
+optimizer:
+  n_waypoints: 30
+  w_time: 20.0
+  sel_max_weight: 0.5
+  pop_size: 32
+  n_gen: 200
+  n_seeds: 5
+  use_hard_mammal_constraint: true
+  constraint_voyage_time_hr: null   # null = echo_ais's own voyage time (validated); see config/default_config.yaml for details
+  mutation_initial_rate: 0.3
+  mutation_final_rate: 0.01
+  crossover_initial_rate: 0.95
+  crossover_final_rate: 0.7
+  seed_population_shape: "min_speed"
+
+tl_model:
+  kind: "light"
+  light_model_dir: null   # set via MUTE_LIGHT_MODEL_DIR env var, or fill in here
+
+data:
+  baseline_route_csv: "data/baseline_route.csv"
+  mammal_paths_csv: "data/mammal_paths.csv"
+
+mammal_ids: [3, 12, 8]
+output_dir: "results/validated_3mammal"

@@ -1,0 +1,87 @@
+# This is the REFERENCE config -- every field documented inline, read top to bottom once to learn
+# what each knob does and why its default is what it is. To actually run something, start from
+# config/examples/quickstart.yaml or config/examples/validated_3mammal.yaml instead (see the
+# top-level README's "Run a preloaded case" section) -- copy one of those, not this file, when
+# setting up your own case.
+#
+# Every value here is read by config.py's load_config() into a RunConfig -- nothing in the package
+# hardcodes a value that should actually live here. All paths are relative to wherever you run
+# `python run.py --config ...` FROM (normally handover/), except the TL model dirs, which are
+# absolute paths on your machine (see below) -- or leave those null and set MUTE_LIGHT_MODEL_DIR /
+# MUTE_FULL_MODEL_DIR instead, which every config (including this one) falls back to.
+
+ship:
+  ship_class: "Other"          # JOMOPANS-ECHO vessel class -- see source_model/jomopans_model.py's
+                                # VESSEL_REF_SPEED_KN for the full list (Containership, Bulker,
+                                # Tanker, Vehicle Carrier get the low-frequency "hump"; everything
+                                # else, including "Other", doesn't -- confirmed in LOG.md)
+  ship_length_ft: 697.18        # Case_3/OKIANA's real length -- change if modeling a different vessel
+  min_speed_kn: 8.0
+  max_speed_kn: 14.5
+  acceleration_limit_kn_per_hr: 9.0   # hard constraint in ga_problem.py; production's own limit
+
+optimizer:
+  n_waypoints: 30               # GA works on this many control points; route_utils interpolates
+                                 # back to full resolution (583 points for the shipped baseline_route.csv)
+  w_time: 20.0                  # raw linear time penalty: cost += w_time * T_hr. FINAL validated
+                                 # value (sandbox/optimizer/LOG.md's w_time sweep + final run) --
+                                 # NOT directly comparable to production's time_penalty_weight,
+                                 # which penalizes only OVERAGE past a nominal time, not raw hours.
+  sel_max_weight: 0.5           # noise_cost = sel_max_weight*SEL_max + (1-sel_max_weight)*SEL_mean.
+                                 # 0.5 = balanced (validated here). Production uses 0.95 (near-pure
+                                 # worst-case) -- untested with use_hard_mammal_constraint=true.
+  pop_size: 32                  # GA population. 32/200 is the single-mammal-validated sweet spot
+  n_gen: 200                    # (LOG.md sensitivity study) -- NOT separately validated for the
+                                 # multi-mammal case, where two seed SHAPES at these same settings
+                                 # landed 4+dB apart (see seed_population_shape below).
+  n_seeds: 5                    # multi-start: run this many seeds, pick one via the selection rule
+                                 # in baselines.py (select_best_seed) -- not a single unseeded shot.
+  use_hard_mammal_constraint: true   # THE validated core contribution: every mammal's SEL under the
+                                 # candidate must be <= its SEL under constant mid-speed. Eliminates
+                                 # the unconstrained formulation's bimodal "bad basin" failure mode
+                                 # (52-100% of seeds landed there, depending on w_time, across 115
+                                 # tested seed/config combos -- SUMMARY.md). Set false to reproduce
+                                 # the old, unconstrained, seed-unreliable behavior for comparison.
+  constraint_voyage_time_hr: null   # the "mid_speed" heuristic/constraint floor, given as a
+                                 # voyage TIME (hours) for a constant-speed transit, not a speed --
+                                 # the implied constant speed (route_distance_nm / this value) is
+                                 # computed automatically by run.py. null (default) = the echo_ais
+                                 # recorded voyage's own time on this route -- "don't let the
+                                 # optimizer make any mammal worse off than the ship taking as
+                                 # long as the real recorded voyage, at constant speed." Set an
+                                 # explicit number of hours for a different reference (must imply
+                                 # a speed within [min_speed_kn, max_speed_kn] or run.py raises) --
+                                 # untested at any value other than the echo_ais-time default.
+  mutation_initial_rate: 0.3    # AdaptiveMutation: anneals from initial_rate -> final_rate linearly
+  mutation_final_rate: 0.01     # over n_gen. These ARE now actually consulted (operators.py's bug
+  crossover_initial_rate: 0.95  # fix) -- before the fix, these 4 numbers had zero effect on anything.
+  crossover_final_rate: 0.7     # No evidence from the sandbox's sensitivity study to deviate from
+                                 # these (production's own) defaults.
+  seed_population_shape: "min_speed"   # "min_speed" (validated standard, LOG.md 2026-10-01: beat
+                                 # baseline-shaped seeding on every metric once adopted) or
+                                 # "baseline" (seed near the real recorded echo_ais profile instead).
+
+tl_model:
+  kind: "light"                 # "light" (validated path for the actual GA/optimizer -- ~10x
+                                 # faster, agreement within <1dB of "full") or "full" (29-band +
+                                 # PCA; only used for TL-characterization work, not benchmarked
+                                 # as the optimizer's cost function).
+  light_model_dir: null         # REQUIRED if kind=light. Absolute path to the directory containing
+                                 # model.pkl (e.g. "/path/to/MUTE/v2/.../models/RBF/model_single_freq").
+                                 # NOT shipped in this repo -- see data/README.md.
+  full_model_dir: null          # REQUIRED if kind=full. Directory containing interpolators.pkl
+                                 # (+ ipca.pkl, yobs_mean.pkl). Also not shipped -- see data/README.md.
+  full_n_components: 10         # only relevant if you retrain the full model yourself; ignored on import
+
+data:
+  baseline_route_csv: "data/baseline_route.csv"   # Case_3/OKIANA real voyage, resampled onto a
+                                 # shared 124.6NM route (583 points) -- see data/README.md.
+  mammal_paths_csv: "data/mammal_paths.csv"       # 20 synthetic test mammal tracks -- NOT
+                                 # validated against the published mammal-motion paper, for
+                                 # optimizer testing only. See data/README.md.
+
+mammal_ids: [3, 12, 8]          # which mammal_id rows from mammal_paths_csv to run against --
+                                 # these 3 (spread by route position, not raw geography) are the
+                                 # ones most cross-checked against known numbers in this repo's tests.
+
+output_dir: "results"           # where run.py writes its output CSV/JSON (created if missing)

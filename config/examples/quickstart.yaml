@@ -1,0 +1,27 @@
+# THE command to run first on a fresh download -- deliberately small (pop_size/n_gen cut way
+# down from the validated 32/200) so it finishes in well under a minute instead of a few minutes,
+# just to prove your setup works end to end. Not a scientifically validated result by itself --
+# see examples/validated_3mammal.yaml for the real settings. Full documentation of every field is
+# in config/default_config.yaml; this file only overrides what's different from it.
+
+optimizer:
+  n_waypoints: 30
+  w_time: 20.0
+  sel_max_weight: 0.5
+  pop_size: 16          # cut from 32 -- quickstart only, not validated at this size
+  n_gen: 40              # cut from 200 -- quickstart only, not validated at this size
+  n_seeds: 1              # cut from 5 -- quickstart only, skips the multi-seed selection rule
+  use_hard_mammal_constraint: true
+  constraint_voyage_time_hr: null   # null = echo_ais's own voyage time (validated); see config/default_config.yaml for details
+  seed_population_shape: "min_speed"
+
+tl_model:
+  kind: "light"
+  light_model_dir: null   # set via MUTE_LIGHT_MODEL_DIR env var, or fill in here
+
+data:
+  baseline_route_csv: "data/baseline_route.csv"
+  mammal_paths_csv: "data/mammal_paths.csv"
+
+mammal_ids: [12]          # single mammal -- the fastest possible case
+output_dir: "results/quickstart"
