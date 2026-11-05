@@ -16,15 +16,19 @@ from tl_model.tl_model import TLModelConfig
 
 def compute_heuristic_baselines(wp_lat, wp_lon, echo_speed, tracks, ship_class, ship_length_ft,
                                  sel_max_weight, tl_config: TLModelConfig, min_v=8.0, max_v=14.5,
-                                 mid_v=None):
-    """Returns dict: profile_name -> {"speed", "SEL_per_mammal", "NL_peak_max_per_mammal", "T_hr"}
+                                 mid_v=None, received_level_mode="peak_band"):
+    """Returns dict: profile_name -> {"speed", "SEL_per_mammal", "NL_max_per_mammal", "T_hr"}
     for min_speed / mid_speed / max_speed / echo_ais, evaluated against the given mammal tracks.
 
     `mid_speed` is also the constraint floor when `optimizer.use_hard_mammal_constraint` is on
     (see run.py) -- "no mammal is ever made worse off than the ship going this speed the whole
     way." Defaults to the arithmetic midpoint of (min_v, max_v) (the validated setting -- see
     SCIENTIFIC_FINDINGS.md), but any value in [min_v, max_v] can be passed explicitly via `mid_v`
-    to use a different constraint reference speed."""
+    to use a different constraint reference speed.
+
+    `received_level_mode` MUST match whatever the GA run itself uses ("peak_band" or "broadband",
+    see objective/objective.py) -- the constraint compares SEL values directly, so baseline and
+    candidate must be computed under the same convention or the comparison is meaningless."""
     n_wp = len(wp_lat)
     if mid_v is None:
         mid_v = (min_v + max_v) / 2.0
@@ -39,11 +43,12 @@ def compute_heuristic_baselines(wp_lat, wp_lon, echo_speed, tracks, ship_class, 
     out = {}
     for name, profile in profiles.items():
         res = evaluate_population_multi(profile[np.newaxis, :], wp_lat, wp_lon, tracks, ship_class,
-                                         ship_length_ft, 0.0, sel_max_weight, tl_config)
+                                         ship_length_ft, 0.0, sel_max_weight, tl_config,
+                                         received_level_mode=received_level_mode)
         out[name] = {
             "speed": profile.tolist(),
             "SEL_per_mammal": res["SEL_per_mammal"][:, 0].tolist(),
-            "NL_peak_max_per_mammal": res["NL_peak_per_mammal"][:, 0, :].max(axis=1).tolist(),
+            "NL_max_per_mammal": res["NL_per_mammal"][:, 0, :].max(axis=1).tolist(),
             "T_hr": float(res["T_hr"][0]),
         }
     return out

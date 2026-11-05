@@ -127,8 +127,43 @@ def test_multi_mammal_sel_max_and_mean_consistent():
     assert np.isclose(result["SEL_mean"][0], sel_per_mammal.mean())
 
 
+def test_broadband_mode_is_louder_than_peak_band():
+    """Broadband energy-sums across all 33 bands instead of taking the max -- must always be
+    >= peak_band's result (summing non-negative energy terms, one of which is the peak band
+    itself, can only add, never subtract)."""
+    if not _light_available():
+        print("SKIP test_broadband_mode_is_louder_than_peak_band (no local TL model)")
+        return
+    wp_lat, wp_lon, speed_cp = load_route()
+    track = load_mammal(12)
+    tl_cfg = TLModelConfig(kind="light", light_model_dir=LIGHT_DIR)
+    x = speed_cp[np.newaxis, :]
+
+    peak = evaluate_population_multi(x, wp_lat, wp_lon, [track], SHIP_CLASS, SHIP_LENGTH_FT,
+                                      w_time=0.0, sel_max_weight=0.5, tl_config=tl_cfg,
+                                      received_level_mode="peak_band")
+    broadband = evaluate_population_multi(x, wp_lat, wp_lon, [track], SHIP_CLASS, SHIP_LENGTH_FT,
+                                           w_time=0.0, sel_max_weight=0.5, tl_config=tl_cfg,
+                                           received_level_mode="broadband")
+    assert broadband["SEL_per_mammal"][0, 0] >= peak["SEL_per_mammal"][0, 0] - 1e-9
+
+
+def test_invalid_received_level_mode_raises():
+    wp_lat, wp_lon, speed_cp = load_route()
+    track = load_mammal(12)
+    tl_cfg = TLModelConfig(kind="light", light_model_dir=LIGHT_DIR)
+    try:
+        evaluate_population_multi(speed_cp[np.newaxis, :], wp_lat, wp_lon, [track], SHIP_CLASS,
+                                   SHIP_LENGTH_FT, 0.0, 0.5, tl_cfg, received_level_mode="bogus")
+        assert False, "expected ValueError"
+    except ValueError:
+        pass
+
+
 if __name__ == "__main__":
     test_baseline_sel_matches_known_value_mammal_12()
     test_slower_profile_is_quieter_and_slower_group_sel_max()
     test_multi_mammal_sel_max_and_mean_consistent()
+    test_broadband_mode_is_louder_than_peak_band()
+    test_invalid_received_level_mode_raises()
     print("objective: all tests passed (or skipped where the TL model is absent)")

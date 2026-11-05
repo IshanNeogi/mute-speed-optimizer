@@ -4,7 +4,8 @@ Given a route and one or more mammal tracks, finds a per-waypoint ship speed pro
 sound exposure level (SEL) without making any mammal worse off than the ship going constant
 medium speed. A clean, modular, tested port of the validated work in `sandbox/optimizer/` — see
 `SCIENTIFIC_FINDINGS.md` for the full validation record and `AGENTS.md` if an AI coding tool is
-driving changes here.
+driving changes here. See `EDGE_COMPUTE_ANALYSIS.md` for measured memory/disk footprint and
+estimated runtime on edge hardware (Jetson/Pi-class devices).
 
 ## 1. Install
 

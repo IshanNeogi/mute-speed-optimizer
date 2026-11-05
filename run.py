@@ -56,6 +56,7 @@ def run_one_seed(cfg: RunConfig, wp_lat, wp_lon, tracks, seed: int, baseline_sel
         ship.min_speed_kn, ship.max_speed_kn, opt.w_time, opt.sel_max_weight, cfg.tl_model,
         acc_limit=ship.acceleration_limit_kn_per_hr,
         baseline_sel_per_mammal=baseline_sel_per_mammal if opt.use_hard_mammal_constraint else None,
+        received_level_mode=opt.received_level_mode,
     )
 
     if opt.seed_population_shape == "min_speed":
@@ -85,7 +86,8 @@ def run_one_seed(cfg: RunConfig, wp_lat, wp_lon, tracks, seed: int, baseline_sel
         return {"seed": seed, "feasible": False, "elapsed_s": elapsed_s, "cost_history": cost_history}
 
     out = evaluate_population_multi(res.X[np.newaxis, :], wp_lat, wp_lon, tracks, ship.ship_class,
-                                     ship.ship_length_ft, opt.w_time, opt.sel_max_weight, cfg.tl_model)
+                                     ship.ship_length_ft, opt.w_time, opt.sel_max_weight, cfg.tl_model,
+                                     received_level_mode=opt.received_level_mode)
     sel_per_mammal = out["SEL_per_mammal"][:, 0]
     feasible = bool(np.all(sel_per_mammal <= np.asarray(baseline_sel_per_mammal) + 1e-6))
     return {
@@ -124,7 +126,8 @@ def main():
     baselines = compute_heuristic_baselines(wp_lat, wp_lon, echo_speed, tracks, cfg.ship.ship_class,
                                              cfg.ship.ship_length_ft, cfg.optimizer.sel_max_weight,
                                              cfg.tl_model, cfg.ship.min_speed_kn, cfg.ship.max_speed_kn,
-                                             mid_v=constraint_speed_kn)
+                                             mid_v=constraint_speed_kn,
+                                             received_level_mode=cfg.optimizer.received_level_mode)
     mid_speed_sel = baselines["mid_speed"]["SEL_per_mammal"]
     echo_ais_sel = baselines["echo_ais"]["SEL_per_mammal"]
 

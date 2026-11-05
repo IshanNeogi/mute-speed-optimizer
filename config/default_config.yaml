@@ -42,6 +42,12 @@ optimizer:
                                  # (52-100% of seeds landed there, depending on w_time, across 115
                                  # tested seed/config combos -- SUMMARY.md). Set false to reproduce
                                  # the old, unconstrained, seed-unreliable behavior for comparison.
+  received_level_mode: "peak_band"   # "peak_band" (default, matches production exactly, validated
+                                 # throughout SCIENTIFIC_FINDINGS.md) or "broadband" (energy-sum
+                                 # across all 33 JOMOPANS bands instead of taking the loudest one --
+                                 # a real change to the optimizer's own cost function, not just a
+                                 # reporting difference; see objective/objective.py's docstring).
+                                 # The GA search itself runs against whichever mode you pick here.
   constraint_voyage_time_hr: null   # the "mid_speed" heuristic/constraint floor, given as a
                                  # voyage TIME (hours) for a constant-speed transit, not a speed --
                                  # the implied constant speed (route_distance_nm / this value) is

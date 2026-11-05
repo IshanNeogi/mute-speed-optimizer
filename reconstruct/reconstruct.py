@@ -54,6 +54,7 @@ def reconstruct_full_order(manifest: dict, optimized_speed, data_root: Path, sim
                                full_model_dir=tl_raw["full_model_dir"],
                                full_n_components=tl_raw.get("full_n_components", 10))
     mammal_ids = manifest["mammal_ids"]
+    received_level_mode = opt.get("received_level_mode", "peak_band")   # match the run this reconstructs
 
     lat_full, lon_full, echo_speed_full = load_full_resolution_route(data_root / manifest["data"]["baseline_route_csv"])
     cum_dist_full_m = cumulative_distance_m(lat_full, lon_full)
@@ -92,11 +93,15 @@ def reconstruct_full_order(manifest: dict, optimized_speed, data_root: Path, sim
             m_lat, m_lon = mammal_lat[mid][i], mammal_lon[mid][i]
             _, _, dist_m = GEOD.inv(lon_full[i], lat_full[i], m_lon, m_lat)
             tl = query_tl(tl_config, lat_full[i], lon_full[i], np.array([m_lat]), np.array([m_lon]))[0]
-            nl_peak = float(np.max(np.clip(ls_bands - tl, 0.0, None)))
-            cumulative_energy[mid] += half_seg_weight_hr[i] * 10 ** (nl_peak / 10.0)
+            nl_bands = np.clip(ls_bands - tl, 0.0, None)
+            if received_level_mode == "peak_band":
+                nl = float(np.max(nl_bands))
+            else:
+                nl = float(10 * np.log10(np.clip(np.sum(10 ** (nl_bands / 10.0)), 1e-30, None)))
+            cumulative_energy[mid] += half_seg_weight_hr[i] * 10 ** (nl / 10.0)
             sel_cum = 10 * np.log10(max(cumulative_energy[mid], 1e-30))
             row[f"distance_km_{mid}"] = round(float(dist_m) / 1000.0, 4)
-            row[f"received_level_db_{mid}"] = round(nl_peak, 3)
+            row[f"received_level_db_{mid}"] = round(nl, 3)
             row[f"cumulative_sel_db_{mid}"] = round(float(sel_cum), 3)
         rows.append(row)
     return rows

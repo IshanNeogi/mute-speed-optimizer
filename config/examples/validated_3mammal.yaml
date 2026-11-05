@@ -11,6 +11,7 @@ optimizer:
   n_gen: 200
   n_seeds: 5
   use_hard_mammal_constraint: true
+  received_level_mode: "peak_band"   # see config/default_config.yaml for the broadband alternative
   constraint_voyage_time_hr: null   # null = echo_ais's own voyage time (validated); see config/default_config.yaml for details
   mutation_initial_rate: 0.3
   mutation_final_rate: 0.01

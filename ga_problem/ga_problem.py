@@ -44,7 +44,7 @@ def build_seeded_population(seed_speed: np.ndarray, pop_size: int, min_v: float,
 class MultiMammalSpeedGAProblem(Problem):
     def __init__(self, wp_lat, wp_lon, mammal_tracks, ship_class, ship_length_ft,
                  min_v, max_v, w_time, sel_max_weight, tl_config: TLModelConfig,
-                 acc_limit=9.0, baseline_sel_per_mammal=None):
+                 acc_limit=9.0, baseline_sel_per_mammal=None, received_level_mode="peak_band"):
         n_wp = len(wp_lat)
         n_mammal_constr = len(mammal_tracks) if baseline_sel_per_mammal is not None else 0
         super().__init__(n_var=n_wp, n_obj=1, n_constr=1 + n_mammal_constr, xl=min_v, xu=max_v)
@@ -54,6 +54,12 @@ class MultiMammalSpeedGAProblem(Problem):
         self.w_time, self.sel_max_weight = w_time, sel_max_weight
         self.tl_config = tl_config
         self.acc_limit = acc_limit
+        self.received_level_mode = received_level_mode
+        # baseline_sel_per_mammal MUST already be computed under the same received_level_mode --
+        # comparing a broadband-mode candidate's SEL against a peak_band-mode baseline would be
+        # apples-to-oranges and silently break the constraint's meaning. Callers (run.py/baselines)
+        # are responsible for this; not re-checked here since there's no way to verify after the
+        # fact from a plain number.
         self.baseline_sel_per_mammal = (np.asarray(baseline_sel_per_mammal) if baseline_sel_per_mammal is not None
                                          else None)
         self.seg_dist = segment_distances_nm(wp_lat, wp_lon)
@@ -62,7 +68,8 @@ class MultiMammalSpeedGAProblem(Problem):
     def _evaluate(self, x, out, *args, **kwargs):
         result = evaluate_population_multi(x, self.wp_lat, self.wp_lon, self.mammal_tracks,
                                             self.ship_class, self.ship_length_ft, self.w_time,
-                                            self.sel_max_weight, self.tl_config)
+                                            self.sel_max_weight, self.tl_config,
+                                            received_level_mode=self.received_level_mode)
         self.last_eval = result
         out["F"] = result["cost"]
 

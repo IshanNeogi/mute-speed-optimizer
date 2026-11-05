@@ -32,6 +32,12 @@ class OptimizerConfig:
     n_gen: int = 200
     n_seeds: int = 5
     use_hard_mammal_constraint: bool = True   # the validated contribution; False = old unconstrained formulation
+    received_level_mode: str = "peak_band"    # "peak_band" (default, matches production exactly,
+                                               # validated) or "broadband" (energy-sum across all
+                                               # 33 JOMOPANS bands instead of taking the loudest --
+                                               # a real change to the optimizer's own cost function,
+                                               # not validated the way peak_band is; see
+                                               # objective/objective.py's module docstring)
     constraint_voyage_time_hr: Optional[float] = None   # the "mid_speed" heuristic/constraint
                                                    # floor, expressed as a voyage TIME (hours) for
                                                    # a constant-speed transit of the route, not a
