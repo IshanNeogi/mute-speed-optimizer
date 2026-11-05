@@ -3,4 +3,6 @@ scipy
 pymoo
 pyproj
 pyyaml
+matplotlib      # needed for viz/ (figure generation); happens to come in transitively via pymoo
+                # too, but declared explicitly here since that's not guaranteed across versions
 scikit-learn    # only needed if you use the "full" TL model (rbf_full.py's IncrementalPCA)

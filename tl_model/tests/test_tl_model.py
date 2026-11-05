@@ -8,16 +8,35 @@ from pathlib import Path
 
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
 from tl_model.tl_model import TLModelConfig, TLModelNotFoundError, query_tl
 
-# Defaults match this dev machine's layout (../MUTE checked out next to MUTEApp); override via env
-# vars or edit here if your layout differs. See config/default_config.yaml for the normal way to
-# point at these paths when actually running the optimizer.
+# MUTE_LIGHT_MODEL_DIR / MUTE_FULL_MODEL_DIR (same env vars run.py/config.py use) win if set.
+# Falls back to MUTE_ROOT + the known subpath, or a dev-machine-only directory guess -- which
+# must NOT crash on a machine with a different directory layout (this used to raise IndexError
+# on a fresh clone outside the original dev machine's exact nesting -- found and fixed 2026-11-05).
 import os
-_MUTE_ROOT = Path(os.environ.get("MUTE_ROOT", Path(__file__).resolve().parents[5] / "MUTE"))
-LIGHT_DIR = str(_MUTE_ROOT / "v2/src/noise_propagation_model/noise_propagation_model/models/RBF/model_single_freq")
-FULL_DIR = str(_MUTE_ROOT / "v2/src/noise_propagation_model/noise_propagation_model/models/RBF/model")
+
+
+def _resolve_model_dir(direct_env, subpath):
+    direct = os.environ.get(direct_env)
+    if direct:
+        return direct
+    mute_root_env = os.environ.get("MUTE_ROOT")
+    if mute_root_env:
+        return str(Path(mute_root_env) / subpath)
+    try:
+        guess = ROOT.parents[2] / "MUTE"
+    except IndexError:
+        return None
+    return str(guess / subpath)
+
+
+_LIGHT_SUBPATH = "v2/src/noise_propagation_model/noise_propagation_model/models/RBF/model_single_freq"
+_FULL_SUBPATH = "v2/src/noise_propagation_model/noise_propagation_model/models/RBF/model"
+LIGHT_DIR = _resolve_model_dir("MUTE_LIGHT_MODEL_DIR", _LIGHT_SUBPATH)
+FULL_DIR = _resolve_model_dir("MUTE_FULL_MODEL_DIR", _FULL_SUBPATH)
 
 # A source/receiver pair known to be in-domain, in-water (San Juan Islands cluster).
 S_LAT, S_LON = 48.60, -123.15
@@ -25,11 +44,11 @@ R_LAT, R_LON = np.array([48.65]), np.array([-123.10])
 
 
 def _light_available():
-    return Path(LIGHT_DIR).exists()
+    return LIGHT_DIR is not None and Path(LIGHT_DIR).exists()
 
 
 def _full_available():
-    return Path(FULL_DIR).exists()
+    return FULL_DIR is not None and Path(FULL_DIR).exists()
 
 
 def test_light_model_loads_and_queries():

@@ -14,12 +14,29 @@ from config import DataPaths, OptimizerConfig, RunConfig, ShipConfig, config_to_
 from reconstruct.reconstruct import reconstruct_full_order, write_full_order_csv
 from tl_model.tl_model import TLModelConfig
 
-_MUTE_ROOT = Path(os.environ.get("MUTE_ROOT", ROOT.parents[2] / "MUTE"))
-LIGHT_DIR = str(_MUTE_ROOT / "v2/src/noise_propagation_model/noise_propagation_model/models/RBF/model_single_freq")
+def _resolve_light_dir():
+    """MUTE_LIGHT_MODEL_DIR (same env var run.py/config.py use) wins if set. Falls back to
+    MUTE_ROOT + the known subpath, or a dev-machine-only directory guess -- which must NOT crash
+    on a machine with a different directory layout (this used to raise IndexError on a fresh
+    clone outside the original dev machine's exact nesting -- found and fixed 2026-11-05)."""
+    direct = os.environ.get("MUTE_LIGHT_MODEL_DIR")
+    if direct:
+        return direct
+    mute_root_env = os.environ.get("MUTE_ROOT")
+    if mute_root_env:
+        return str(Path(mute_root_env) / "v2/src/noise_propagation_model/noise_propagation_model/models/RBF/model_single_freq")
+    try:
+        guess = ROOT.parents[2] / "MUTE"
+    except IndexError:
+        return None
+    return str(guess / "v2/src/noise_propagation_model/noise_propagation_model/models/RBF/model_single_freq")
+
+
+LIGHT_DIR = _resolve_light_dir()
 
 
 def _light_available():
-    return Path(LIGHT_DIR).exists()
+    return LIGHT_DIR is not None and Path(LIGHT_DIR).exists()
 
 
 def test_reconstruction_matches_control_point_count_and_is_monotonic_in_time():
